@@ -36,7 +36,7 @@ defmodule JSON.APITest do
         assert context.document.data
       end
 
-      should "have the id as a sting", context do
+      should "have the id as a string", context do
         assert context.document.data.id == "12"
       end
 
@@ -47,6 +47,17 @@ defmodule JSON.APITest do
       should "have the correct attributes in data", context do
         pairs = context.document.data.attributes |> Enum.to_list
         assert {:title, "FooBar"} in pairs
+        assert {:tags, ~w(foo)} in pairs
+        assert {:content, "FooBarBaz"} in pairs
+        assert Enum.count(pairs) == 3
+      end
+
+      should "have relationships in the data", context do
+        assert context.document.data.relationships
+      end
+
+      should "have an author relationship", context do
+        assert context.document.data.relationships.author
       end
     end
   end

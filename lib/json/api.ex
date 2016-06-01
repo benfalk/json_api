@@ -11,6 +11,14 @@ defmodule JSON.API do
       def type, do: {:use, ""}
       def attributes, do: []
       defoverridable id: 0, type: 0, attributes: 0
+      @relationships []
+      @before_compile JSON.API
+    end
+  end
+
+  defmacro __before_compile__(_env) do
+    quote do
+      def relationships, do: @relationships
     end
   end
 
@@ -18,6 +26,12 @@ defmodule JSON.API do
   end
 
   defmacro has_one(field, opts \\ []) do
+    opts = Keyword.put(opts, :type, :has_one)
+    rel = JSON.API.Resource.Relationship
+
+    quote bind_quoted: [opts: opts, field: field, rel: rel] do
+      @relationships [rel.build(field, opts) | @relationships]
+    end
   end
 
   defmacro attributes(attrs) do

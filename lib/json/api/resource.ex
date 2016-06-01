@@ -1,25 +1,30 @@
 defmodule JSON.API.Resource do
+  alias JSON.API.Resource.Relationship
 
   @type attributes :: %{ atom() => any() }
   @type id :: String.t
+  @type relationships :: %{ atom() => Relationship.t }
   @type type :: String.t
 
   @type t :: %__MODULE__{
     id: id,
     type: type,
-    attributes: attributes
+    attributes: attributes,
+    relationships: relationships
   }
 
   defstruct id: "",
             type: "",
-            attributes: %{}
+            attributes: %{},
+            relationships: %{}
   
   @spec build(module(), map(), any()) :: t
   def build(definition, data, context \\ nil) do
     %__MODULE__{
       id: get(definition.id, data, context) |> to_string,
       type: get(definition.type, data, context) |> to_string,
-      attributes: fetch_attributes(definition, data, context)
+      attributes: attributes(definition, data, context),
+      relationships: relationships(definition, data, context)
     }
   end
 
@@ -33,7 +38,13 @@ defmodule JSON.API.Resource do
     end
   end
 
-  defp fetch_attributes(definition, data, context) do
+  defp relationships(definition, _data, _context) do
+    definition.relationships
+    |> Enum.map(fn rel -> {rel.name, %{}} end)
+    |> Enum.into(%{})
+  end
+
+  defp attributes(definition, data, context) do
     definition.attributes
     |> Enum.map(fn {attr, cmd} -> {attr, get(cmd, data, context)} end)
     |> Enum.into(%{})
