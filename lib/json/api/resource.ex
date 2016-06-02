@@ -5,6 +5,7 @@ defmodule JSON.API.Resource do
   @type id :: String.t
   @type relationships :: %{ atom() => Relationship.t }
   @type type :: String.t
+  @type identity :: %{ :id => String.t, :type => String.t }
 
   @type t :: %__MODULE__{
     id: id,
@@ -28,6 +29,14 @@ defmodule JSON.API.Resource do
     }
   end
 
+  @spec identity(module(), map(), any()) :: identity
+  def identity(definition, data, context \\ nil) do
+    %{
+      id: get(definition.id, data, context) |> to_string,
+      type: get(definition.type, data, context) |> to_string
+    }
+  end
+
   defp get({:fetch, key}, data, _), do: Map.get(data, key)
   defp get({:use, value}, _, _), do: value
   defp get(key, data, context) when is_function(key) do
@@ -38,9 +47,9 @@ defmodule JSON.API.Resource do
     end
   end
 
-  defp relationships(definition, _data, _context) do
+  defp relationships(definition, data, context) do
     definition.relationships
-    |> Enum.map(fn rel -> {rel.name, %{}} end)
+    |> Enum.map(fn rel -> {rel.name, Relationship.expand(rel, data, context)} end)
     |> Enum.into(%{})
   end
 

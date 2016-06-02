@@ -19,18 +19,31 @@ defmodule JSON.API do
   defmacro __before_compile__(_env) do
     quote do
       def relationships, do: @relationships
+      defoverridable relationships: 0
     end
   end
 
   defmacro has_many(field, opts \\ []) do
+    alias JSON.API.Resource.Relationship
+
+    opts = opts
+    |> Keyword.put(:type, :to_many)
+    |> Keyword.put(:name, field)
+
+    quote bind_quoted: [opts: opts] do
+      @relationships [Relationship.from_opts(opts) | @relationships]
+    end
   end
 
   defmacro has_one(field, opts \\ []) do
-    opts = Keyword.put(opts, :type, :has_one)
-    rel = JSON.API.Resource.Relationship
+    alias JSON.API.Resource.Relationship
 
-    quote bind_quoted: [opts: opts, field: field, rel: rel] do
-      @relationships [rel.build(field, opts) | @relationships]
+    opts = opts
+    |> Keyword.put(:type, :to_one)
+    |> Keyword.put(:name, field)
+
+    quote bind_quoted: [opts: opts] do
+      @relationships [Relationship.from_opts(opts) | @relationships]
     end
   end
 
