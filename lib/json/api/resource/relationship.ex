@@ -10,11 +10,12 @@ defmodule JSON.API.Resource.Relationship do
 
   @default_resource Resource.Default
   @default_type :to_one
+  @default_strategy :default
   
   @type name :: atom()
   @type resource :: module()
   @type type :: :to_one | :to_many
-  @type data_strategy :: :default
+  @type data_strategy :: :default | {:fetch, atom()} | {:use, atom()}
 
   @type t :: %__MODULE__{
     type: type,
@@ -27,7 +28,7 @@ defmodule JSON.API.Resource.Relationship do
   defstruct type: @default_type,
             resource: @default_resource,
             name: nil,
-            using: :default
+            using: @default_strategy
   
   @spec default_resource() :: resource
   def default_resource, do: @default_resource
@@ -37,9 +38,13 @@ defmodule JSON.API.Resource.Relationship do
     %__MODULE__{
       name: Keyword.fetch!(opts, :name),
       type: Keyword.get(opts, :type, @default_type),
-      resource: Keyword.get(opts, :resource, @default_resource)
+      resource: Keyword.get(opts, :resource, @default_resource),
+      using: Keyword.get(opts, :using, @default_strategy)
     }
   end
+
+  @spec data(t, map(), any()) :: map() | [map()]
+  def data(rel, data, context \\ nil), do: rel_data(rel, data, context)
 
   @spec expand(t, map(), any()) :: map()
   def expand(relation, data, context) do
@@ -47,22 +52,36 @@ defmodule JSON.API.Resource.Relationship do
     |> add_data(relation, data, context)
   end
 
-  defp add_data(map, rel, data, context) do
-    put_in(map, [:data], relation_data(rel, data, context))
+  defp add_data(map, relation, data, context) do
+    rel_data =
+      case data(relation, data, context) do
+        rel when is_list(rel) ->
+          Enum.map(rel, &Resource.identity(relation.resource, &1, context))
+
+        rel when is_map(rel) ->
+          Resource.identity(relation.resource, rel, context)
+
+        nil -> nil
+      end
+    put_in(map, [:data], rel_data)
   end
 
-  defp relation_data(%{type: :to_one, using: :default}=rel, data, context) do
-    case Map.get(data, rel.name, nil) do
-      nil -> nil
-      rel_data -> Resource.identity(rel.resource, rel_data, context)
+  defp rel_data(%{type: :to_one, using: :default}=rel, data, _) do
+    Map.get(data, rel.name, nil)
+  end
+  defp rel_data(%{type: :to_one, using: {:fetch, what}}, data, _) do
+    Map.get(data, what, nil)
+  end
+  defp rel_data(%{type: :to_many, using: :default}=rel, data, _) do
+    case Map.get(data, rel.name, []) do
+      rel_data when not is_list(rel_data) -> []
+      rel_data -> rel_data
     end
   end
-  defp relation_data(%{type: :to_many, using: :default}=rel, data, context) do
-    case Map.get(data, rel.name, []) do
-      data when not is_list(data) -> []
-      rel_data ->
-        rel_data
-        |> Enum.map(&Resource.identity(rel.resource, &1, context))
+  defp rel_data(%{type: :to_many, using: {:fetch, what}}, data, _) do
+    case Map.get(data, what, []) do
+      rel_data when not is_list(rel_data) -> []
+      rel_data -> rel_data
     end
   end
 end

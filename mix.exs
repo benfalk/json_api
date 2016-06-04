@@ -28,6 +28,7 @@ defmodule JSON.API.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
+      {:funky_func, github: "benfalk/funky_func"},
       {:shouldi, "~> 0.3.0", only: :test}
     ]
   end

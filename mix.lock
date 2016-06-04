@@ -1,1 +1,2 @@
-%{"shouldi": {:hex, :shouldi, "0.3.0", "ae3fb3cec3328057377a0aa750aa1bb9f8b321ba054e1e2c7211512c383fb6ff", [:mix], []}}
+%{"funky_func": {:git, "https://github.com/benfalk/funky_func.git", "24f5dbe7b1e64b8fe4814732c9b657d0c1160e7e", []},
+  "shouldi": {:hex, :shouldi, "0.3.0", "ae3fb3cec3328057377a0aa750aa1bb9f8b321ba054e1e2c7211512c383fb6ff", [:mix], []}}
