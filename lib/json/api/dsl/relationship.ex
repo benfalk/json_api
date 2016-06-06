@@ -4,6 +4,7 @@ defmodule JSON.API.DSL.Relationship do
 
   defmacro __using__(_) do
     quote do
+      import FunkyFunc, only: [package_funs: 1]
       import JSON.API.DSL.Relationship, only: [has_many: 2, has_one: 2]
       @relationships []
       @before_compile JSON.API.DSL.Relationship
@@ -24,20 +25,28 @@ defmodule JSON.API.DSL.Relationship do
     |> Keyword.put(:type, :to_many)
     |> Keyword.put(:name, field)
 
-    quote bind_quoted: [opts: opts] do
-      @relationships [Relationship.from_opts(opts) | @relationships]
+    funs = for {:mkfun, fun} <- opts, do: fun
+
+    quote do
+      @relationships [Relationship.from_opts(unquote(opts)++[{:owner, __MODULE__}]) | @relationships]
+      package_funs unquote(funs)
     end
   end
 
   defmacro has_one(field, opts \\ []) do
     opts = opts
+    |> escape_fun_list
     |> transform_opts(field)
     |> Keyword.put(:type, :to_one)
     |> Keyword.put(:name, field)
 
-    quote bind_quoted: [opts: opts] do
-      # macro here to work with opts for building methods?
-      @relationships [Relationship.from_opts(opts) | @relationships]
+    funs = for {:mkfun, fun} <- opts, do: fun
+
+    quote do
+      @relationships [
+        Relationship.from_opts(unquote(opts)++[{:owner, __MODULE__}]) | @relationships]
+
+      package_funs unquote(funs)
     end
   end
 
@@ -50,10 +59,11 @@ defmodule JSON.API.DSL.Relationship do
     use_field = {:using, {:fetch, what}}
     transform_opts(field, t, [use_field|opts])
   end
-  defp transform_opts(field, [{:where, expr}|t], opts) when escape_fun?(expr) do
+  defp transform_opts(field, [{:where, expr}|t], opts) when escaped_fun?(expr) do
     fun = :"#{field}_where_clause"
-    mkfun = {:mkfun, fun}
-    transform_opts(field, t, [mkfun|opts])
+    mkfun = {:mkfun, {fun, expr}}
+    where = {:filter, {:call, {fun, arity(expr)}}}
+    transform_opts(field, t, opts ++ [mkfun, where])
   end
   defp transform_opts(field, [h|t], opts) do
     transform_opts(field, t, [h|opts])

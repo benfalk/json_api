@@ -28,6 +28,7 @@ defmodule JSON.API.Resource.Relationship do
   defstruct type: @default_type,
             resource: @default_resource,
             name: nil,
+            owner: nil,
             using: @default_strategy
   
   @spec default_resource() :: resource
@@ -37,6 +38,7 @@ defmodule JSON.API.Resource.Relationship do
   def from_opts(opts) do
     %__MODULE__{
       name: Keyword.fetch!(opts, :name),
+      owner: Keyword.fetch!(opts, :owner),
       type: Keyword.get(opts, :type, @default_type),
       resource: Keyword.get(opts, :resource, @default_resource),
       using: Keyword.get(opts, :using, @default_strategy)
