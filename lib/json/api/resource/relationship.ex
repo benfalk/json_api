@@ -15,13 +15,15 @@ defmodule JSON.API.Resource.Relationship do
   @type name :: atom()
   @type resource :: module()
   @type type :: :to_one | :to_many
-  @type data_strategy :: :default | {:fetch, atom()} | {:use, atom()}
+  @type data_strategy :: :default | {:fetch, atom()} | {:call, {atom(), pos_integer}}
 
   @type t :: %__MODULE__{
     type: type,
     resource: resource,
+    owner: resource,
     name: name,
-    using: data_strategy
+    using: data_strategy,
+    filter: data_strategy
   }
 
   
@@ -29,7 +31,8 @@ defmodule JSON.API.Resource.Relationship do
             resource: @default_resource,
             name: nil,
             owner: nil,
-            using: @default_strategy
+            using: @default_strategy,
+            filter: @default_strategy
   
   @spec default_resource() :: resource
   def default_resource, do: @default_resource
@@ -41,12 +44,17 @@ defmodule JSON.API.Resource.Relationship do
       owner: Keyword.fetch!(opts, :owner),
       type: Keyword.get(opts, :type, @default_type),
       resource: Keyword.get(opts, :resource, @default_resource),
-      using: Keyword.get(opts, :using, @default_strategy)
+      using: Keyword.get(opts, :using, @default_strategy),
+      filter: Keyword.get(opts, :filter, @default_strategy)
     }
   end
 
   @spec data(t, map(), any()) :: map() | [map()]
-  def data(rel, data, context \\ nil), do: rel_data(rel, data, context)
+  def data(rel, data, context \\ nil) do
+    rel
+    |> rel_data(data, context)
+    |> filter(rel, context)
+  end
 
   @spec expand(t, map(), any()) :: map()
   def expand(relation, data, context) do
@@ -85,5 +93,15 @@ defmodule JSON.API.Resource.Relationship do
       rel_data when not is_list(rel_data) -> []
       rel_data -> rel_data
     end
+  end
+
+  defp filter(data, %{filter: :default}, _context) do
+    data
+  end
+  defp filter(data, %{type: :to_many, filter: {:call, {func, 1}}}=rel, _) do
+    data |> Enum.filter(&apply(rel.owner, func, [&1]))
+  end
+  defp filter(data, %{type: :to_many, filter: {:call, {func, 2}}}=rel, context) do
+    data |> Enum.filter(&apply(rel.owner, func, [&1, context]))
   end
 end

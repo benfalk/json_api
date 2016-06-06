@@ -19,33 +19,24 @@ defmodule JSON.API.DSL.Relationship do
   end
 
   defmacro has_many(field, opts) do
+    add_relationship(field, :to_many, opts)
+  end
+
+  defmacro has_one(field, opts \\ []) do
+    add_relationship(field, :to_one, opts)
+  end
+
+  defp add_relationship(field, type, opts) do
     opts = opts
     |> escape_fun_list
     |> transform_opts(field)
-    |> Keyword.put(:type, :to_many)
+    |> Keyword.put(:type, type)
     |> Keyword.put(:name, field)
 
     funs = for {:mkfun, fun} <- opts, do: fun
 
     quote do
       @relationships [Relationship.from_opts(unquote(opts)++[{:owner, __MODULE__}]) | @relationships]
-      package_funs unquote(funs)
-    end
-  end
-
-  defmacro has_one(field, opts \\ []) do
-    opts = opts
-    |> escape_fun_list
-    |> transform_opts(field)
-    |> Keyword.put(:type, :to_one)
-    |> Keyword.put(:name, field)
-
-    funs = for {:mkfun, fun} <- opts, do: fun
-
-    quote do
-      @relationships [
-        Relationship.from_opts(unquote(opts)++[{:owner, __MODULE__}]) | @relationships]
-
       package_funs unquote(funs)
     end
   end
@@ -62,8 +53,8 @@ defmodule JSON.API.DSL.Relationship do
   defp transform_opts(field, [{:where, expr}|t], opts) when escaped_fun?(expr) do
     fun = :"#{field}_where_clause"
     mkfun = {:mkfun, {fun, expr}}
-    where = {:filter, {:call, {fun, arity(expr)}}}
-    transform_opts(field, t, opts ++ [mkfun, where])
+    filter = {:filter, {:call, {fun, arity(expr)}}}
+    transform_opts(field, t, opts ++ [mkfun, filter])
   end
   defp transform_opts(field, [h|t], opts) do
     transform_opts(field, t, [h|opts])
