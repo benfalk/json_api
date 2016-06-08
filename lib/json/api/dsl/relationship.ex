@@ -19,44 +19,46 @@ defmodule JSON.API.DSL.Relationship do
   end
 
   defmacro has_many(field, opts) do
-    add_relationship(field, :to_many, opts)
+    info = %{field: field, module: __CALLER__.module}
+    add_relationship(info, :to_many, opts)
   end
 
   defmacro has_one(field, opts \\ []) do
-    add_relationship(field, :to_one, opts)
+    info = %{field: field, module: __CALLER__.module}
+    add_relationship(info, :to_one, opts)
   end
 
-  defp add_relationship(field, type, opts) do
+  defp add_relationship(info, type, opts) do
     opts = opts
     |> escape_fun_list
-    |> transform_opts(field)
+    |> transform_opts(info)
     |> Keyword.put(:type, type)
-    |> Keyword.put(:name, field)
+    |> Keyword.put(:name, info.field)
 
     funs = for {:mkfun, fun} <- opts, do: fun
 
     quote do
-      @relationships [Relationship.from_opts(unquote(opts)++[{:owner, __MODULE__}]) | @relationships]
+      @relationships [Relationship.from_opts(unquote(opts)) | @relationships]
       package_funs unquote(funs)
     end
   end
 
-  defp transform_opts(opts, field), do: transform_opts(field, opts, [])
+  defp transform_opts(opts, info), do: transform_opts(info, opts, [])
 
-  defp transform_opts(_field, [], opts) do
+  defp transform_opts(_info, [], opts) do
     opts
   end
-  defp transform_opts(field, [{:from, what}|t], opts) do
+  defp transform_opts(info, [{:from, what}|t], opts) do
     use_field = {:using, {:fetch, what}}
-    transform_opts(field, t, [use_field|opts])
+    transform_opts(info, t, [use_field|opts])
   end
-  defp transform_opts(field, [{:where, expr}|t], opts) when escaped_fun?(expr) do
-    fun = :"#{field}_where_clause"
+  defp transform_opts(info, [{:where, expr}|t], opts) when escaped_fun?(expr) do
+    fun = :"#{info.field}_where_clause"
     mkfun = {:mkfun, {fun, expr}}
-    filter = {:filter, {:call, {fun, arity(expr)}}}
-    transform_opts(field, t, opts ++ [mkfun, filter])
+    filter = {:filter, {:call, [info.module, fun, arity(expr)]}}
+    transform_opts(info, t, opts ++ [mkfun, filter])
   end
-  defp transform_opts(field, [h|t], opts) do
-    transform_opts(field, t, [h|opts])
+  defp transform_opts(info, [h|t], opts) do
+    transform_opts(info, t, [h|opts])
   end
 end
