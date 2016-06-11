@@ -50,5 +50,11 @@ defmodule JSON.API.Resource.RelationshipTest do
       context
       |> assign(user: JSON.API.build_document(Farmer, user).data)
     end
+
+    should "have livestock with different types", %{user: user} do
+      types = user.relationships.livestock.data |> Enum.map(&(&1.type))
+      assert "pig" in types
+      assert "pony" in types
+    end
   end
 end

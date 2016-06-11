@@ -39,6 +39,16 @@ defmodule JSON.API.Resource do
     }
   end
 
+  @spec from_opts(Keyword.t) :: map()
+  def from_opts(opts) do
+    %{
+      id: Keyword.get(opts, :id, {:fetch, :id}),
+      type: Keyword.get(opts, :type,  {:use, ""}),
+      attributes: Keyword.get(opts, :attributes, []),
+      relationships: Keyword.get(opts, :relationships, [])
+    }
+  end
+
   defp relationships(definition, data, context) do
     definition.relationships
     |> Enum.map(fn rel -> {rel.name, Relationship.expand(rel, data, context)} end)

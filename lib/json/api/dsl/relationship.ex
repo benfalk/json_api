@@ -1,5 +1,6 @@
 defmodule JSON.API.DSL.Relationship do
   alias JSON.API.Resource.Relationship
+  alias JSON.API.DSL
   import FunkyFunc
 
   defmacro __using__(_) do
@@ -30,7 +31,9 @@ defmodule JSON.API.DSL.Relationship do
 
   defp add_relationship(info, type, opts) do
     opts = opts
+    |> DSL.Instruction.translate_opts
     |> escape_fun_list
+    |> decide_resource
     |> transform_opts(info)
     |> Keyword.put(:type, type)
     |> Keyword.put(:name, info.field)
@@ -60,5 +63,10 @@ defmodule JSON.API.DSL.Relationship do
   end
   defp transform_opts(info, [h|t], opts) do
     transform_opts(info, t, [h|opts])
+  end
+
+  defp decide_resource(opts) do
+    resource = JSON.API.Resource.from_opts(opts)
+    Keyword.put_new(opts, :resource, Macro.escape(resource))
   end
 end
